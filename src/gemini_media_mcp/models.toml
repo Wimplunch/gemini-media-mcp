@@ -1,0 +1,67 @@
+# Default model catalogue and prices (USD).
+#
+# Prices were taken from https://ai.google.dev/gemini-api/docs/pricing on the date below.
+# They change. Override or extend this file with your own TOML via GEMINI_MEDIA_CONFIG
+# (same structure; tables you define replace the defaults per model ID).
+
+pricing_checked = "2026-10-31"
+pricing_source = "https://ai.google.dev/gemini-api/docs/pricing"
+
+[defaults]
+image_model = "gemini-nano-banana-2.1"
+video_model = "gemini-omni-1.1-flash"
+
+# --- Image models: output_prices = USD per generated image, keyed by image_size ---
+
+[models."gemini-nano-banana-2.1"]
+kind = "image"
+label = "Nano Banana 2.1"
+input_usd_per_mtok = 1.50
+output_prices = { "1K" = 0.0336, "2K" = 0.0504, "4K" = 0.113 }
+aspect_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+max_reference_images = 14
+notes = "Newest general-purpose image model."
+
+[models."gemini-3.1-flash-lite-image"]
+kind = "image"
+label = "Nano Banana 2 Lite"
+input_usd_per_mtok = 0.25
+output_prices = { "1K" = 0.0336 }
+aspect_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+max_reference_images = 14
+notes = "Cheapest and fastest. 1K only."
+
+[models."gemini-3.1-flash-image"]
+kind = "image"
+label = "Nano Banana 2"
+input_usd_per_mtok = 0.50
+output_prices = { "512" = 0.045, "1K" = 0.067, "2K" = 0.101, "4K" = 0.151 }
+aspect_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+max_reference_images = 14
+notes = "Previous generation. Only model with 512 px output."
+
+[models."gemini-3-pro-image"]
+kind = "image"
+label = "Nano Banana Pro"
+input_usd_per_mtok = 2.00
+output_prices = { "1K" = 0.134, "2K" = 0.134, "4K" = 0.24 }
+aspect_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+max_reference_images = 14
+notes = "Highest quality, best text rendering. Most expensive."
+
+# --- Video models: output_prices = USD per second of video, keyed by resolution ---
+# Veo 3.1 preview models were shut down on the Gemini API on 2026-10-22.
+# Google recommends Gemini Omni Flash as the replacement.
+
+[models."gemini-omni-1.1-flash"]
+kind = "video"
+label = "Gemini Omni Flash"
+input_usd_per_mtok = 1.50
+# Google bills 5,792 output tokens per second of 720p at $17.50 / 1M tokens (about $0.10/s).
+# No price is published for 360p, 1080p or 4K; 360p is assumed to cost at most the 720p rate.
+# 1080p and 4K are left out until Google publishes prices; add them in your own config.
+output_prices = { "360p" = 0.1014, "720p" = 0.1014 }
+aspect_ratios = ["16:9", "9:16"]
+max_reference_images = 1
+estimate_seconds = 10
+notes = "Video with audio. Estimate assumes 10 s, the longest single generation."
