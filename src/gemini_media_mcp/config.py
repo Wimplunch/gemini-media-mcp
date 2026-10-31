@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 ModelKind = Literal["image", "video"]
+Provider = Literal["google", "openrouter"]
+PROVIDERS: tuple[Provider, ...] = ("google", "openrouter")
 
 ENV_PREFIX = "GEMINI_MEDIA_"
 DEFAULT_OUTPUT_DIR = Path.home() / "gemini-media"
@@ -63,6 +65,7 @@ class Settings:
     max_input_bytes: int
     request_timeout_s: float
     catalog: Catalog
+    provider: Provider = "google"
 
     @property
     def cost_log_path(self) -> Path:
@@ -145,6 +148,14 @@ def _float_env(env: Mapping[str, str], name: str, default: float) -> float:
     return value
 
 
+def _provider_env(env: Mapping[str, str]) -> Provider:
+    raw = (env.get(f"{ENV_PREFIX}PROVIDER") or "google").strip().lower()
+    for provider in PROVIDERS:
+        if raw == provider:
+            return provider
+    raise ConfigError(f"{ENV_PREFIX}PROVIDER must be one of {', '.join(PROVIDERS)}, got {raw!r}")
+
+
 def _resolve_dir(raw: str) -> Path:
     return Path(raw).expanduser().resolve()
 
@@ -175,4 +186,5 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         max_input_bytes=int(_float_env(env, "MAX_INPUT_MB", 7.0) * 1024 * 1024),
         request_timeout_s=_float_env(env, "TIMEOUT_SECONDS", 180.0),
         catalog=load_catalog(env),
+        provider=_provider_env(env),
     )

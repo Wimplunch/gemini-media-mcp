@@ -15,10 +15,11 @@ from mcp_types import ToolAnnotations
 from pydantic import Field
 
 from . import __version__
-from .backend import GeminiBackend, GeminiError
+from .backend import GeminiBackend, GeminiError, MediaBackend
 from .config import ConfigError, Settings, load_settings
 from .costs import BudgetExceededError
 from .files import FileSafetyError
+from .openrouter import OpenRouterBackend
 from .service import MediaService, ToolInputError
 
 logger = logging.getLogger("gemini_media_mcp")
@@ -151,9 +152,15 @@ def build_server(service: MediaService) -> MCPServer[Any]:
     return server
 
 
+API_KEY_ENV = {"google": "GEMINI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
+
+
 def create_service(settings: Settings) -> MediaService:
-    def backend() -> GeminiBackend:
-        return GeminiBackend(os.environ.get("GEMINI_API_KEY", ""), settings.request_timeout_s)
+    def backend() -> MediaBackend:
+        key = os.environ.get(API_KEY_ENV[settings.provider], "")
+        if settings.provider == "openrouter":
+            return OpenRouterBackend(key, settings.request_timeout_s)
+        return GeminiBackend(key, settings.request_timeout_s)
 
     return MediaService(settings, backend)
 
@@ -169,6 +176,13 @@ def main() -> None:
     except ConfigError as exc:
         print(f"gemini-media-mcp: configuration error: {exc}", file=sys.stderr)
         raise SystemExit(2) from None
-    if not os.environ.get("GEMINI_API_KEY"):
-        logger.warning("GEMINI_API_KEY is not set; generation tools will fail until it is.")
+    key_env = API_KEY_ENV[settings.provider]
+    if settings.provider != "google":
+        logger.info(
+            "Provider %s: prompts and reference images are sent to openrouter.ai. "
+            "Video tools are unavailable.",
+            settings.provider,
+        )
+    if not os.environ.get(key_env):
+        logger.warning("%s is not set; generation tools will fail until it is.", key_env)
     build_server(create_service(settings)).run()
