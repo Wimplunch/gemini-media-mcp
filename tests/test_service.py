@@ -29,6 +29,7 @@ async def test_generate_image_writes_file_sidecar_and_log(
     sidecar = json.loads(Path(result["sidecar"]).read_text())
     assert sidecar["prompt"] == "Ein Fuchs im Schnee"
     assert sidecar["model"] == "gemini-nano-banana-2.1"
+    assert sidecar["provider"] == "google"
     assert sidecar["parameters"] == {"aspect_ratio": "1:1", "resolution": "1K"}
     assert sidecar["ai_generated"] is True
     assert "SynthID" in sidecar["notice"]
@@ -229,6 +230,8 @@ async def test_list_models(service: MediaService) -> None:
     assert result["pricing_checked"] == "2026-10-31"
     defaults = {m["id"] for m in result["models"] if m["default"]}
     assert defaults == {"gemini-nano-banana-2.1", "gemini-omni-1.1-flash"}
+    assert result["provider"] == "google"
+    assert result["video_available"] is True
 
 
 async def test_cost_report(service: MediaService) -> None:
@@ -254,3 +257,37 @@ def test_backend_is_created_lazily(settings: Settings) -> None:
     assert created == []
     assert svc.backend is svc.backend
     assert created == [1]
+
+
+@pytest.fixture
+def openrouter_service(settings: Settings, fake_backend: FakeBackend, clock: Clock) -> MediaService:
+    return MediaService(replace(settings, provider="openrouter"), lambda: fake_backend, clock=clock)
+
+
+async def test_openrouter_keeps_budget_sandbox_and_provenance(
+    openrouter_service: MediaService, fake_backend: FakeBackend, settings: Settings
+) -> None:
+    result = await openrouter_service.generate_image("a fox", model="gemini-3.1-flash-lite-image")
+    sidecar = json.loads(Path(result["sidecar"]).read_text())
+    assert sidecar["provider"] == "openrouter"
+    assert sidecar["model"] == "gemini-3.1-flash-lite-image"
+    assert openrouter_service.cost_report()["paid_calls"] == 1
+
+    with pytest.raises(FileSafetyError):
+        await openrouter_service.edit_image("x", ["/etc/hostname"])
+    strict = replace(openrouter_service.settings, max_cost_per_call=0.01)
+    with pytest.raises(BudgetExceededError):
+        await MediaService(strict, lambda: fake_backend).generate_image("x")
+    assert len(fake_backend.image_calls) == 1
+
+
+async def test_openrouter_has_no_video(
+    openrouter_service: MediaService, fake_backend: FakeBackend
+) -> None:
+    for confirm in (False, True):
+        with pytest.raises(ToolInputError, match="Google provider"):
+            await openrouter_service.start_video("waves", confirm_cost=confirm)
+    assert fake_backend.video_calls == []
+    listing = openrouter_service.list_models()
+    assert listing["provider"] == "openrouter"
+    assert listing["video_available"] is False
