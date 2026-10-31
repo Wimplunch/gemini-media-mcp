@@ -54,6 +54,43 @@ to `gemini-omni-1.1-flash`. The cost estimate assumes 10 s (the maximum single-g
 length) so the budget check errs on the expensive side. 1080p/4K are disabled by default
 because Google publishes no price for them; they can be enabled in a config file.
 
+## OpenRouter (optional provider, checked 2026-10-31)
+
+Sources: <https://openrouter.ai/docs/guides/overview/multimodal/image-generation>,
+<https://openrouter.ai/openapi.json> (`createImages`, `ImageGenerationRequest`),
+`GET https://openrouter.ai/api/v1/images/models` and `/images/models/google/<id>/endpoints`,
+<https://openrouter.ai/docs/api/reference/errors-and-debugging>,
+<https://openrouter.ai/docs/guides/privacy/data-collection>.
+
+- **Model IDs:** `google/gemini-nano-banana-2.1`, `google/gemini-3.1-flash-lite-image`,
+  `google/gemini-3.1-flash-image`, `google/gemini-3-pro-image` (also `-preview` variants and
+  `google/gemini-2.5-flash-image`). Mapping: catalogue ID → `google/<id>`.
+- **API used:** the dedicated Image API, `POST https://openrouter.ai/api/v1/images`,
+  `Authorization: Bearer <key>`. Body: `model`, `prompt`, `n` (Gemini: max 1), `resolution`
+  (`512`/`1K`/`2K`/`4K`, per model as in our catalogue), `aspect_ratio`,
+  `input_references: [{"type": "image_url", "image_url": {"url": "data:<mime>;base64,..."}}]`
+  (Gemini: max 14), `provider: {only, order, ignore, sort, allow_fallbacks}`. The older
+  chat-completions route (`modalities: ["image", "text"]`) also exists but needs more
+  parsing; the Image API maps 1:1 onto our parameters.
+- **Response:** `{"created": ..., "data": [{"b64_json": "...", "media_type": "image/png"}],
+  "usage": {..., "cost": ...}}`. No model text. We detect the MIME type from the bytes.
+- **Providers per model** (all Google-operated): `google-ai-studio` for all four;
+  `google-vertex` (`/global`, `/us`) for Lite, Nano Banana 2 and Pro. Requests are pinned with
+  `provider.only`/`order = ["google-ai-studio", "google-vertex"]`.
+- **Prices:** per-token prices equal Google's (e.g. Nano Banana 2 output $60/1M tokens on AI
+  Studio and Vertex global, **$66/1M on Vertex us**). Nano Banana Pro 4K is not offered on
+  Vertex. Bundled per-image estimates therefore apply; Vertex us can be 10 % higher.
+- **Errors:** `{"error": {"code", "message", "metadata"}}`, HTTP status = code. 400 bad
+  request, 401 bad key, 402 no credits, 403 permission / guardrail / moderation
+  (`metadata.reasons`), 404, 408 timeout, 413 payload too large, 429 rate limit, 500, 502
+  provider error, 503 no provider, 524 edge timeout, 529 provider overloaded. Errors during
+  generation can also arrive as HTTP 200 with an error body.
+  Our mapping: 401 → auth; 402/429 → quota; 403 → safety if flagged, else auth;
+  408/524 → timeout (not retried, may be billed); 500/502/503/504/529 → transient (max 2 retries).
+- **Privacy:** OpenRouter stores request metadata, not prompts/responses unless you opt in
+  to logging; CSAM-flagged content may be retained. No ZDR flag exists on the Image API.
+- **Video:** no video model on OpenRouter, so video stays Google-only.
+
 ## MCP Python SDK
 
 - Current release `mcp==2.3.0` (2026-10-02). In mcp 2.x **`FastMCP` was renamed to

@@ -106,7 +106,9 @@ Alle Einstellungen sind Umgebungsvariablen.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
-| `GEMINI_API_KEY` | – | Dein Gemini-API-Key (für die Generierung nötig) |
+| `GEMINI_API_KEY` | – | Dein Gemini-API-Key (für die Generierung mit dem Standard-Provider nötig) |
+| `GEMINI_MEDIA_PROVIDER` | `google` | `google` oder `openrouter`, siehe [Provider](#provider) |
+| `OPENROUTER_API_KEY` | – | Dein OpenRouter-Key, wird nur beim Provider `openrouter` gelesen |
 | `GEMINI_MEDIA_OUTPUT_DIR` | `~/gemini-media` | Zielordner für Bilder, Videos und Sidecars |
 | `GEMINI_MEDIA_ALLOWED_DIRS` | Ausgabeordner | Ordner, aus denen Eingabebilder gelesen werden dürfen, getrennt mit `:` (unter Windows `;`). Muss den Ausgabeordner enthalten |
 | `GEMINI_MEDIA_MAX_COST_PER_CALL` | `0.50` | Höchstens so viele geschätzte USD pro Aufruf |
@@ -132,6 +134,42 @@ Stand **31.10.2026**. Zum Ändern kopierst du die Datei, passt sie an und setzt
 `GEMINI_MEDIA_CONFIG` auf deine Kopie. Jede `[models."<id>"]`-Tabelle in deiner Datei ersetzt
 den mitgelieferten Eintrag mit derselben ID.
 
+## Provider
+
+Standardmäßig spricht der Server **nur mit Google** (`GEMINI_MEDIA_PROVIDER=google`). Ohne
+dein ausdrückliches Opt-in ändert sich nichts.
+
+Wahlweise können die Bild-Tools (`generate_image`, `edit_image`) stattdessen über
+[OpenRouter](https://openrouter.ai) laufen, mit denselben Google-Modellen:
+
+```bash
+GEMINI_MEDIA_PROVIDER=openrouter
+OPENROUTER_API_KEY=...   # wie GEMINI_API_KEY setzen, nie in eine Konfigurationsdatei
+```
+
+Was sich mit `openrouter` ändert:
+
+- **Datenfluss:** Prompts und Referenzbilder gehen an `openrouter.ai`, das sie an Google
+  weiterreicht. Ein zweites Unternehmen sieht deine Daten. Laut OpenRouter werden Prompts und
+  Antworten nicht gespeichert, solange du das Logging in den Kontoeinstellungen nicht
+  einschaltest. Prüfe das selbst auf
+  [der Datenschutzseite](https://openrouter.ai/docs/guides/privacy/data-collection).
+- **Routing:** Jede Anfrage ist auf Googles eigene Provider bei OpenRouter festgelegt
+  (`google-ai-studio`, danach `google-vertex`). Das Modell eines anderen Unternehmens
+  antwortet nie.
+- **Modelle:** Die Katalog-IDs werden auf OpenRouters `google/<id>` abgebildet, z. B.
+  `gemini-3-pro-image` → `google/gemini-3-pro-image`. `list_models` zeigt dieselben IDs und
+  Optionen.
+- **Preise:** OpenRouter reicht Googles Token-Preise durch, die mitgelieferten Schätzungen
+  gelten also weiter. Manche Vertex-Regionen sind bis zu 10 % teurer, deshalb wird AI Studio
+  zuerst gefragt. Verbindlich ist deine [OpenRouter-Aktivität](https://openrouter.ai/activity).
+- **Kein Video:** OpenRouter hat kein Videomodell. `start_video` und `get_video_status`
+  melden einen klaren Fehler; für Video stellst du zurück auf `google`.
+- **Unverändert:** Kostenlimits, Pfad-Sandbox, Eingabeprüfung, Schutz vor Überschreiben und
+  das Sidecar (das jetzt `"provider"` vermerkt). Der OpenRouter-Key wird genauso aus
+  Meldungen entfernt wie der Gemini-Key, und der Client verweigert jede Verbindung zu einem
+  anderen Host als `openrouter.ai`.
+
 ## Kostenbeispiele
 
 Schätzungen nach Googles Listenpreisen vom 31.10.2026 (USD, Standard-Tarif):
@@ -151,7 +189,8 @@ Das Log speichert *Schätzungen*. Verbindlich ist deine Google-Rechnung, die du 
 
 ## Sicherheitskonzept
 
-- **API-Key:** Er kommt nur aus `GEMINI_API_KEY` und geht nur als HTTP-Header an Google. Er
+- **API-Key:** Er kommt nur aus `GEMINI_API_KEY` (bzw. `OPENROUTER_API_KEY` beim
+  optionalen OpenRouter-Provider) und geht nur als HTTP-Header an diesen Anbieter. Er
   wird nie geloggt, ist nie Teil des Settings-Objekts und wird aus jeder Fehlermeldung entfernt.
 - **Dateizugriff:** Eingabebilder werden nur aus `GEMINI_MEDIA_ALLOWED_DIRS` gelesen. Pfade
   werden vor der Prüfung vollständig aufgelöst, Symlinks eingeschlossen. Tricks mit `../` und
@@ -163,8 +202,9 @@ Das Log speichert *Schätzungen*. Verbindlich ist deine Google-Rechnung, die du 
 - **Kostenkontrolle:** Jeder Aufruf wird vor dem Senden bepreist und abgelehnt, wenn er das
   Limit pro Aufruf, pro Tag oder pro Monat überschreiten würde. Videos brauchen zusätzlich
   ausdrücklich `confirm_cost=true`.
-- **Netzwerk:** Der Server spricht nur mit der Google-Gemini-API (`*.googleapis.com`). Keine
-  Telemetrie, keine Analytics, keine Update-Checks.
+- **Netzwerk:** Der Server spricht nur mit der Google-Gemini-API (`*.googleapis.com`) oder,
+  nach Opt-in für OpenRouter, nur mit `openrouter.ai`. Keine Telemetrie, keine Analytics,
+  keine Update-Checks.
 - **Abhängigkeiten:** Wenige direkte Laufzeit-Abhängigkeiten, exakt gepinnt; das Lockfile
   pinnt den Rest. Im Repo laufen Dependabot und ein gitleaks-Secret-Scan.
 

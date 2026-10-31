@@ -104,7 +104,9 @@ All settings are environment variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `GEMINI_API_KEY` | – | Your Gemini API key (required for generation) |
+| `GEMINI_API_KEY` | – | Your Gemini API key (required for generation with the default provider) |
+| `GEMINI_MEDIA_PROVIDER` | `google` | `google` or `openrouter`, see [Provider](#provider) |
+| `OPENROUTER_API_KEY` | – | Your OpenRouter key, only read when the provider is `openrouter` |
 | `GEMINI_MEDIA_OUTPUT_DIR` | `~/gemini-media` | Where images, videos and sidecars are written |
 | `GEMINI_MEDIA_ALLOWED_DIRS` | output dir | Folders input images may be read from, separated by `:` (`;` on Windows). Must contain the output dir |
 | `GEMINI_MEDIA_MAX_COST_PER_CALL` | `0.50` | Max estimated USD per call |
@@ -129,6 +131,38 @@ Prices were checked on **2026-10-31** against the
 the file, edit it and point `GEMINI_MEDIA_CONFIG` at your copy. Each `[models."<id>"]` table
 in your file replaces the bundled entry for that ID.
 
+## Provider
+
+By default the server talks **only to Google** (`GEMINI_MEDIA_PROVIDER=google`). Nothing
+changes unless you opt in.
+
+Optionally, the image tools (`generate_image`, `edit_image`) can go through
+[OpenRouter](https://openrouter.ai) instead, using the same Google models:
+
+```bash
+GEMINI_MEDIA_PROVIDER=openrouter
+OPENROUTER_API_KEY=...   # set it like GEMINI_API_KEY, never in a config file
+```
+
+What changes with `openrouter`:
+
+- **Data flow:** prompts and reference images go to `openrouter.ai`, which forwards them to
+  Google. A second company sees your data. OpenRouter states that it does not store prompts
+  or responses unless you opt in to logging in your account settings; check
+  [its privacy page](https://openrouter.ai/docs/guides/privacy/data-collection) yourself.
+- **Routing:** each request is pinned to Google's own providers on OpenRouter
+  (`google-ai-studio`, then `google-vertex`), so no other company's model ever answers.
+- **Models:** the catalogue IDs map to OpenRouter's `google/<id>`, e.g.
+  `gemini-3-pro-image` → `google/gemini-3-pro-image`. Same IDs in `list_models`, same options.
+- **Prices:** OpenRouter passes Google's token prices through, so the bundled estimates
+  apply. Some Vertex regions are up to 10 % dearer; AI Studio is tried first. Your
+  [OpenRouter activity page](https://openrouter.ai/activity) is the real bill.
+- **No video:** OpenRouter has no video model. `start_video` and `get_video_status` return a
+  clear error; switch back to `google` for video.
+- **Unchanged:** cost limits, the path sandbox, input checks, no-overwrite naming and the
+  sidecar (which now records `"provider"`). The OpenRouter key gets the same redaction as the
+  Gemini key, and the client refuses to contact any host other than `openrouter.ai`.
+
 ## Cost examples
 
 Estimates at Google's list prices from 2026-10-31 (USD, standard tier):
@@ -148,8 +182,9 @@ The log stores *estimates*. Your Google bill is what counts; check it in
 
 ## Security
 
-- **API key:** read only from `GEMINI_API_KEY` and sent only as an HTTP header to Google. It
-  is never logged, never part of the settings object and removed from every error message.
+- **API key:** read only from `GEMINI_API_KEY` (or `OPENROUTER_API_KEY` with the opt-in
+  OpenRouter provider) and sent only as an HTTP header to that provider. It is never logged,
+  never part of the settings object and removed from every error message.
 - **File access:** input images are only read from `GEMINI_MEDIA_ALLOWED_DIRS`. Paths are
   fully resolved (symlinks included) before the check, so `../` tricks and symlinks pointing
   outside are rejected.
@@ -159,8 +194,9 @@ The log stores *estimates*. Your Google bill is what counts; check it in
   exclusive-create; an existing name gets a `-2`, `-3` … suffix.
 - **Cost control:** each call is priced before it is sent and rejected if it would break the
   per-call, daily or monthly limit. Videos need an explicit `confirm_cost=true`.
-- **Network:** the server talks only to the Google Gemini API (`*.googleapis.com`). No
-  telemetry, no analytics, no update checks.
+- **Network:** the server talks only to the Google Gemini API (`*.googleapis.com`), or, if
+  you opt in to the OpenRouter provider, only to `openrouter.ai`. No telemetry, no analytics,
+  no update checks.
 - **Dependencies:** a handful of direct runtime dependencies, pinned exactly; the lockfile
   pins the rest. Dependabot and a gitleaks secret scan run on the repository.
 
@@ -168,8 +204,8 @@ More in [SECURITY.md](SECURITY.md).
 
 ## Transparency: sidecars and AI labelling
 
-Every output gets a `<name>.json` next to it with prompt, model, reference images (path and
-SHA-256), parameters, estimated cost and timestamp.
+Every output gets a `<name>.json` next to it with prompt, model, provider, reference images
+(path and SHA-256), parameters, estimated cost and timestamp.
 
 Google embeds an invisible **SynthID** watermark in every image and video generated with
 these models. If you publish the results, label them as AI-generated: from 2 August 2026,
