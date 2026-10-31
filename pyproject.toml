@@ -31,9 +31,9 @@ dependencies = [
 gemini-media-mcp = "gemini_media_mcp.server:main"
 
 [project.urls]
-Repository = "https://github.com/wimplunch/gemini-media-mcp"
-Issues = "https://github.com/wimplunch/gemini-media-mcp/issues"
-Changelog = "https://github.com/wimplunch/gemini-media-mcp/blob/main/CHANGELOG.md"
+Repository = "https://github.com/Wimplunch/gemini-media-mcp"
+Issues = "https://github.com/Wimplunch/gemini-media-mcp/issues"
+Changelog = "https://github.com/Wimplunch/gemini-media-mcp/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [

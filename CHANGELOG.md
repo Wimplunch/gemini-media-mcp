@@ -24,5 +24,5 @@ All notable changes to this project are documented here. The format follows
 - Provenance sidecar JSON for every output; AI-labelling notice (SynthID, EU AI Act Art. 50).
 - Tests with a mocked API, ruff, mypy (strict), GitHub Actions CI, Dependabot, gitleaks.
 
-[Unreleased]: https://github.com/wimplunch/gemini-media-mcp/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/wimplunch/gemini-media-mcp/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Wimplunch/gemini-media-mcp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Wimplunch/gemini-media-mcp/releases/tag/v0.1.0

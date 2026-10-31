@@ -1,6 +1,6 @@
 # gemini-media-mcp
 
-[![CI](https://github.com/wimplunch/gemini-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/wimplunch/gemini-media-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/Wimplunch/gemini-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Wimplunch/gemini-media-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **English:** [README.md](README.md)
@@ -40,13 +40,13 @@ entstanden ist.
 Das Paket ist noch nicht auf PyPI. Du startest es direkt von GitHub mit `uvx`:
 
 ```bash
-uvx --from git+https://github.com/wimplunch/gemini-media-mcp gemini-media-mcp
+uvx --from git+https://github.com/Wimplunch/gemini-media-mcp gemini-media-mcp
 ```
 
 oder aus einem lokalen Klon:
 
 ```bash
-git clone https://github.com/wimplunch/gemini-media-mcp
+git clone https://github.com/Wimplunch/gemini-media-mcp
 uvx --from ./gemini-media-mcp gemini-media-mcp
 ```
 
@@ -70,7 +70,7 @@ Shell-Profil oder in den Systemeinstellungen.
 ```bash
 claude mcp add --scope user gemini-media \
   -e GEMINI_MEDIA_OUTPUT_DIR="$HOME/Bilder/gemini" \
-  -- uvx --from git+https://github.com/wimplunch/gemini-media-mcp gemini-media-mcp
+  -- uvx --from git+https://github.com/Wimplunch/gemini-media-mcp gemini-media-mcp
 ```
 
 Claude Code gibt seine Umgebung an den Server weiter. `GEMINI_API_KEY` wird also geerbt und
@@ -87,7 +87,7 @@ Windows `%APPDATA%\Claude\`):
   "mcpServers": {
     "gemini-media": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/wimplunch/gemini-media-mcp", "gemini-media-mcp"],
+      "args": ["--from", "git+https://github.com/Wimplunch/gemini-media-mcp", "gemini-media-mcp"],
       "env": {
         "GEMINI_MEDIA_OUTPUT_DIR": "/home/du/Bilder/gemini"
       }

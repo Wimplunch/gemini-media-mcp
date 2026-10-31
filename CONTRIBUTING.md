@@ -5,7 +5,7 @@ Thanks for helping! Small, focused pull requests are easiest to review.
 ## Setup
 
 ```bash
-git clone https://github.com/wimplunch/gemini-media-mcp
+git clone https://github.com/Wimplunch/gemini-media-mcp
 cd gemini-media-mcp
 uv sync
 uvx pre-commit install
