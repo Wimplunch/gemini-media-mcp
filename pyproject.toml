@@ -48,6 +48,10 @@ dev = [
 requires = ["uv_build>=0.13.6,<0.14.0"]
 build-backend = "uv_build"
 
+[tool.uv]
+# Rebuild `uvx --from <checkout>` when the sources change, not only pyproject.toml.
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }, { file = "src/**/*.toml" }]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
