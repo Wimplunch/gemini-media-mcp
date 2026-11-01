@@ -19,6 +19,8 @@ All notable changes to this project are documented here. The format follows
 - Configurable model catalogue with prices (checked 2026-10-31), TOML override and env overrides.
 - Cost control: pre-call estimates, per-call/daily/monthly limits, `confirm_cost` for video,
   JSONL cost log.
+- One retry layer only (max. 2 retries, 5xx/connection errors): the SDK's own retries are
+  turned off, so a quota 429 with a long `Retry-After` fails fast instead of hanging.
 - File safety: allowed directories with symlink resolution, magic-byte type check, size
   limit, never-overwrite output naming.
 - Provenance sidecar JSON for every output; AI-labelling notice (SynthID, EU AI Act Art. 50).

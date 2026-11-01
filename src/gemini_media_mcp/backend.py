@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 
 import httpx
 from google import genai
+from google.genai import types as genai_types
+from google.genai._gaos.utils import RetryConfig  # private module; the SDK version is pinned
 from google.genai.interactions import Interaction
 
 from .files import InputImage
@@ -122,13 +124,18 @@ def _status_code(exc: BaseException) -> int | None:
     return None
 
 
+def _is_sdk_timeout(exc: BaseException) -> bool:
+    # The Interactions client raises its own APITimeoutError instead of httpx's.
+    return any(cls.__name__ == "APITimeoutError" for cls in type(exc).__mro__)
+
+
 def map_error(exc: BaseException, redact: Redactor) -> GeminiError:
     """Translate SDK / HTTP exceptions into user-facing GeminiError subclasses."""
     if isinstance(exc, GeminiError):
         return exc
     if isinstance(exc, httpx.ConnectError | httpx.ConnectTimeout):
         return TransientError("Could not reach the Gemini API (network problem).")
-    if isinstance(exc, httpx.TimeoutException):
+    if isinstance(exc, httpx.TimeoutException) or _is_sdk_timeout(exc):
         return GeminiTimeoutError(
             "The Gemini API did not answer in time. "
             "Try again, or raise GEMINI_MEDIA_TIMEOUT_SECONDS."
@@ -207,13 +214,33 @@ def _image_part(image: InputImage) -> dict[str, Any]:
     }
 
 
+def _client_without_sdk_retries(api_key: str) -> genai.Client:
+    """Build a client whose own retry layers are off, so with_retries is the only one.
+
+    The SDK retries 408/409/429/5xx and read timeouts on its own and sleeps for whatever
+    Retry-After says, without a cap: a quota 429 can stall a tool call for hours, and a
+    retried read timeout can bill twice. HttpRetryOptions cannot express "no retries"
+    (attempts is clamped to >= 1, which still means one retry for the Interactions
+    client), so the Interactions client's RetryConfig is replaced directly. The SDK
+    version is pinned; tests/test_backend_http.py fails if this stops working.
+    """
+    client = genai.Client(
+        api_key=api_key,
+        http_options=genai_types.HttpOptions(
+            retry_options=genai_types.HttpRetryOptions(attempts=1)
+        ),
+    )
+    client.aio.interactions.sdk_configuration.retry_config = RetryConfig("none", None, False)
+    return client
+
+
 class GeminiBackend:
     """MediaBackend implementation using google-genai's async Interactions API."""
 
     def __init__(self, api_key: str, timeout_s: float, client: Any | None = None) -> None:
         if not api_key:
             raise AuthError("GEMINI_API_KEY is not set.")
-        self._client = client if client is not None else genai.Client(api_key=api_key)
+        self._client = client if client is not None else _client_without_sdk_retries(api_key)
         self._timeout = timeout_s
         self._redact = Redactor(api_key)
 
