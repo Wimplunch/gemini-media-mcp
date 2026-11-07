@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from gemini_media_mcp import server as server_mod
 from gemini_media_mcp.backend import GeminiBackend
 from gemini_media_mcp.config import Settings
+from gemini_media_mcp.openrouter import OpenRouterBackend
 from gemini_media_mcp.service import MediaService
 
 from .conftest import PNG
@@ -98,3 +100,36 @@ def test_main_runs_server(
     server_mod.main()
     assert len(ran) == 1
     assert "GEMINI_API_KEY is not set" in caplog.text
+
+
+def test_create_service_openrouter(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-test-key")
+    service = server_mod.create_service(replace(settings, provider="openrouter"))
+    assert isinstance(service.backend, OpenRouterBackend)
+
+
+async def test_openrouter_missing_key_and_no_video(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "dummy-test-key")  # must not be used instead
+    srv = server_mod.build_server(
+        server_mod.create_service(replace(settings, provider="openrouter"))
+    )
+    with pytest.raises(ToolError, match="OPENROUTER_API_KEY is not set"):
+        await srv.call_tool("generate_image", {"prompt": "x"})
+    with pytest.raises(ToolError, match="Google provider"):
+        await srv.call_tool("start_video", {"prompt": "waves"})
+
+
+def test_main_openrouter_warns_about_its_key(
+    monkeypatch: pytest.MonkeyPatch, out_dir: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv("GEMINI_MEDIA_OUTPUT_DIR", str(out_dir))
+    monkeypatch.setenv("GEMINI_MEDIA_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setattr("gemini_media_mcp.server.MCPServer.run", lambda self, *a, **k: None)
+    with caplog.at_level("INFO", logger="gemini_media_mcp"):
+        server_mod.main()
+    assert "OPENROUTER_API_KEY is not set" in caplog.text
+    assert "openrouter.ai" in caplog.text

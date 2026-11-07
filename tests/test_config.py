@@ -113,3 +113,16 @@ def test_missing_config_file(tmp_path: Path, out_dir: Path) -> None:
                 "GEMINI_MEDIA_CONFIG": str(tmp_path / "missing.toml"),
             }
         )
+
+
+def test_provider_default_and_override(out_dir: Path) -> None:
+    assert load_settings({"GEMINI_MEDIA_OUTPUT_DIR": str(out_dir)}).provider == "google"
+    s = load_settings(
+        {"GEMINI_MEDIA_OUTPUT_DIR": str(out_dir), "GEMINI_MEDIA_PROVIDER": " OpenRouter"}
+    )
+    assert s.provider == "openrouter"
+
+
+def test_unknown_provider(out_dir: Path) -> None:
+    with pytest.raises(ConfigError, match="PROVIDER"):
+        load_settings({"GEMINI_MEDIA_OUTPUT_DIR": str(out_dir), "GEMINI_MEDIA_PROVIDER": "acme"})

@@ -20,6 +20,7 @@ from .costs import (
 )
 from .files import InputImage, load_input_image, slugify, write_new_output, write_sidecar
 from .jobs import JobStore
+from .openrouter import VIDEO_UNAVAILABLE
 
 MAX_PROMPT_CHARS = 10_000
 AI_NOTICE = (
@@ -111,6 +112,7 @@ class MediaService:
                 "file": path.name,
                 "created": now.isoformat(timespec="seconds"),
                 "generator": f"gemini-media-mcp {__version__}",
+                "provider": self.settings.provider,
                 "prompt": prompt,
                 **metadata,
                 "model_text": media.text,
@@ -227,6 +229,8 @@ class MediaService:
         output_name: str | None = None,
         confirm_cost: bool = False,
     ) -> dict[str, Any]:
+        if self.settings.provider != "google":
+            raise ToolInputError(VIDEO_UNAVAILABLE)
         prompt = self._prompt(prompt)
         info = self._model(model, "video")
         self._choice(aspect_ratio, info.aspect_ratios, "Aspect ratio", info)
@@ -356,6 +360,8 @@ class MediaService:
             for m in catalog.models.values()
         ]
         return {
+            "provider": self.settings.provider,
+            "video_available": self.settings.provider == "google",
             "models": models,
             "pricing_checked": catalog.pricing_checked,
             "pricing_source": catalog.pricing_source,
@@ -379,5 +385,5 @@ class MediaService:
                 "monthly_remaining_usd": _round(max(0.0, s.monthly_budget - totals.month)),
             },
             "cost_log": str(s.cost_log_path),
-            "note": "Estimated costs from the local log, not Google's billing data.",
+            "note": "Estimated costs from the local log, not your provider's billing data.",
         }

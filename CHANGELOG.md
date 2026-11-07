@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Optional OpenRouter backend for `generate_image` and `edit_image`, strictly opt-in via
+  `GEMINI_MEDIA_PROVIDER=openrouter` and `OPENROUTER_API_KEY` (default stays `google`).
+  Uses OpenRouter's Image API, pinned to Google's own providers; network limited to
+  `openrouter.ai`; same retry rules, error mapping and key redaction. Video tools report
+  that they need the Google provider.
+- Sidecars and `list_models` record the active `provider`.
+
+### Changed
+- `start_video` refuses early (no estimate, no request) when the provider is not `google`.
+
 ## [0.1.0] - 2026-10-31
 
 ### Added
